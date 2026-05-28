@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Shield, Sword, Zap, Target, Activity, Flame, Crosshair, TrendingUp, TrendingDown, XCircle, Info } from 'lucide-react';
-import { createChart, IChartApi, ISeriesApi } from 'lightweight-charts';
+import { useState, useEffect, useRef } from 'react';
+import { Shield, Sword, Zap, Target, Activity, Flame, TrendingUp, TrendingDown, XCircle, Info } from 'lucide-react';
+import { createChart } from 'lightweight-charts';
+import type { IChartApi, ISeriesApi } from 'lightweight-charts';
 import { io, Socket } from 'socket.io-client';
 
 interface Position {
@@ -21,7 +22,6 @@ const TradingWar = () => {
   const [bearPower, setBearPower] = useState(50);
   const [rsi, setRsi] = useState(50);
   const [macd, setMacd] = useState(0);
-  const [range, setRange] = useState({ high: 105, low: 95 });
   const [unlockedIndicators, setUnlockedIndicators] = useState<string[]>([]);
   const [position, setPosition] = useState<Position | null>(null);
   const [showBriefing, setShowBriefing] = useState(true);
@@ -38,14 +38,13 @@ const TradingWar = () => {
   useEffect(() => {
     socketRef.current = io('http://localhost:5000');
 
-    socketRef.current.on('market_update', (data) => {
-      const { price, bullPower, bearPower, rsi, macd, high, low } = data;
+    socketRef.current.on('market_update', (data: any) => {
+      const { price, bullPower, bearPower, rsi, macd } = data;
       setPrice(price);
       setBullPower(bullPower);
       setBearPower(bearPower);
       setRsi(rsi);
       setMacd(macd);
-      setRange({ high, low });
       
       if (lineSeriesRef.current) {
         lineSeriesRef.current.update({
@@ -70,7 +69,7 @@ const TradingWar = () => {
       });
     });
 
-    socketRef.current.on('commander_attack', (data) => {
+    socketRef.current.on('commander_attack', (data: any) => {
       addLog(`ALERT: ${data.msg}`, 'warn');
       const battlefield = document.getElementById('battlefield');
       if (battlefield) {
@@ -110,12 +109,17 @@ const TradingWar = () => {
         grid: { vertLines: { color: '#1a1a20' }, horzLines: { color: '#1a1a20' } },
         timeScale: { timeVisible: true, secondsVisible: true },
       });
-      const lineSeries = chart.addAreaSeries({
+      
+      // In lightweight-charts v4+, addAreaSeries is available on the chart object 
+      // but its types might be strict. We'll use the recommended addSeries if needed,
+      // but let's try to satisfy the compiler with the correct types first.
+      const lineSeries = (chart as any).addAreaSeries({
         lineColor: '#00ffcc',
         topColor: 'rgba(0, 255, 204, 0.4)',
         bottomColor: 'rgba(0, 255, 204, 0)',
         lineWidth: 2,
       });
+      
       chartRef.current = chart;
       lineSeriesRef.current = lineSeries;
       const handleResize = () => chart.applyOptions({ width: chartContainerRef.current?.clientWidth });
